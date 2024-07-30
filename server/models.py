@@ -52,5 +52,28 @@ class Project(db.Model):
             'cohorts': [cohort.id for cohort in self.cohorts],
             'members': [member.id for member in self.members]
         }
+    
+    class Cohort(db.Model):
+        __tablename__ = 'cohorts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+
+    projects = db.relationship('Project', secondary='project_cohorts', back_populates='cohorts')
+
+class ProjectMembers(db.Model):
+    _tablename_ = 'project_members'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+class ProjectCohorts(db.Model):
+    _tablename_ = 'project_cohorts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
+    cohort_id = db.Column(db.Integer, db.ForeignKey('cohorts.id'), nullable=False)
 
 
