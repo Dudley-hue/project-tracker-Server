@@ -22,27 +22,18 @@ class Project(db.Model):
     owner_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     github_link = Column(String(200))
     
-    class Cohort(db.Model):
-        __tablename__ = 'cohorts'
+class Cohort(db.Model):
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80), nullable=False)
+    description = Column(String(200))
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
+class ProjectMember(db.Model):
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
 
-    projects = db.relationship('Project', secondary='project_cohorts', back_populates='cohorts')
-
-class ProjectMembers(db.Model):
-    _tablename_ = 'project_members'
-
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-
-class ProjectCohorts(db.Model):
-    _tablename_ = 'project_cohorts'
-
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
-    cohort_id = db.Column(db.Integer, db.ForeignKey('cohorts.id'), nullable=False)
-
+class ProjectCohort(db.Model):
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    cohort_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
 
