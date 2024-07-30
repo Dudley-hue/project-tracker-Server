@@ -1,37 +1,26 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, SelectField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
 from config import Config
 
-# Initialize the app and configurations
-app = Flask(__name__)
+app = Flask(_name_)
 app.config.from_object(Config)
 
-# Initialize extensions
 db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
+migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
-# Models
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
-    role = db.Column(db.String(20), nullable=False)
-    projects = db.relationship('Project', backref='owner', lazy=True)
+from models import User, Project, Cohort, ProjectMember, ProjectCohort
+import routes  # Ensure this import comes after initializing app and db
 
-class Project(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    github_link = db.Column(db.String(100), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+# Register Blueprints
+routes.register_blueprints(app)
 
+
+if _name_ == "_main_":
+    app.run(debug=True)
+=======
 class Cohort(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -83,4 +72,5 @@ def login():
         return jsonify(access_token=access_token), 200
     else:
         return jsonify(message='Invalid credentials'), 401
+
 
