@@ -1,5 +1,4 @@
 from faker import Faker
-
 from app import app, db
 from models import User, Role, Project, Cohort, ProjectMember, ProjectCohort
 from werkzeug.security import generate_password_hash
@@ -81,7 +80,7 @@ def assign_projects_to_cohorts(projects, cohorts):
         db.session.add(project_cohort)
     db.session.commit()
 
-if __name__== "__main__":
+if __name__ == "__main__":
     with app.app_context():
         db.drop_all()  # Drops all tables
         db.create_all()  # Creates all tables
@@ -99,20 +98,3 @@ if __name__== "__main__":
         assign_projects_to_cohorts(projects, cohorts)
 
         print("Database seeded successfully!")
-+=======
-from app import app,db
-from models import User,Role,Project,Cohort,ProjectCohort,ProjectMember
-import random
-
-#generating a faker instance for generating fake data
-faker=Faker()
-
-def create_roles():
-    roles=['admin','student']#list of roles to be created
-    for role_name in roles:
-        role=Role(name=role_name)
-        db.session.add(role)
-        db.session.commit()
-        
-        
-
