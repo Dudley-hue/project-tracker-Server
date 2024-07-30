@@ -1,4 +1,9 @@
+
 from flask import Flask
+
+
+from flask import Flask, jsonify, request, render_template
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -19,8 +24,8 @@ routes.register_blueprints(app)
 
 
 if _name_ == "_main_":
-    app.run(debug=True)
-=======
+    app.run(debug=True) 
+    
 class Cohort(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
