@@ -61,3 +61,26 @@ class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Login')
+
+    # Routes
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        user = User(username=form.username.data, email=form.email.data, password=hashed_password, role=form.role.data)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify(message='User registered successfully'), 201
+    return render_template('register.html', title='Register', form=form)
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    user = User.query.filter_by(email=data['email']).first()
+    if user and bcrypt.check_password_hash(user.password, data['password']):
+        access_token = create_access_token(identity={'username': user.username, 'role': user.role})
+        return jsonify(access_token=access_token), 200
+    else:
+        return jsonify(message='Invalid credentials'), 401
+
