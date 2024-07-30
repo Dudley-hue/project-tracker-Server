@@ -97,5 +97,36 @@ class Projects(Resource):
             return make_response(project.to_dict(), 201)
         except Exception as e:
             return make_response(str(e), 400)
-        
+class ProjectByID(Resource):
+    def get(self, project_id):
+        project = Project.query.filter_by(id=project_id).first()
+
+        if project:
+            return make_response(project.to_dict(), 200)
+        else:
+            return make_response({'message': 'Project not found'}, 404)
+    def delete(self, project_id):
+        project = Project.query.filter_by(id=project_id).first() 
+        if project:
+            db.session.delete(project)
+            db.session.commit()
+            return make_response({'message': 'Project deleted'}, 200)
+        else:
+            return make_response({'message': 'Project not found'}, 404)
+    
+    def patch(self, project_id):
+        project = Project.query.filter_by(id=project_id).first()
+        if project:
+            if 'name' in request.json:
+                project.name = request.json['name']
+            if 'description' in request.json:
+                project.description = request.json['description']
+            if 'github_link' in request.json:
+                project.github_link = request.json['github_link']
+            if 'deployed_link' in request.json:
+                project.deployed_link = request.json['deployed_link']
+            db.session.commit()
+            return make_response(project.to_dict(), 200)
+        else:
+            return make_response({'message': 'Project not found'}, 404)
       
