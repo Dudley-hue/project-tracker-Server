@@ -1,6 +1,8 @@
 from app import db
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import validates
+import re
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
@@ -12,9 +14,28 @@ class User(db.Model):
     role = relationship('Role', back_populates='users')
     projects = relationship('Project', back_populates='owner')
     project_memberships = relationship('ProjectMember', back_populates='user')
-
+    
+    @validates('username')
+    def validate_username(self, key, username):
+        user = User.query.filter_by(username=username).first()
+        if user:
+            raise AssertionError('Username already exists')
+        return username
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
+    @validates('password_hash')
+    def validate_password(self, key, password):
+        if len(password) < 8:
+            raise AssertionError('Password must be at least 8 characters long')
+        return password
+    @validates('email')
+    def validate_email(self, key, email):
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            raise ValueError('Invalid email address')
+        existing_email = User.query.filter_by(email=email).first()
+        if existing_email:
+            raise ValueError('Email already exists')
+        return email
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -33,7 +54,24 @@ class Project(db.Model):
     owner = relationship('User', back_populates='projects')
     project_members = relationship('ProjectMember', back_populates='project')
     project_cohorts = relationship('ProjectCohort', back_populates='project')
-
+    
+    @validates('name')
+    def validate_name(self, key, name):
+        if len(name) < 7:
+            raise AssertionError('Project name must be at least 7 characters long')
+        return name
+     
+    @validates('github_link')
+    def validate_github_link(self, key, github_link):
+        if not github_link.startswith('https://github.com/'):
+            raise AssertionError('GitHub link must start with "https://github.com/"')
+        return github_link
+    
+    @validates('description')
+    def validate_description(self, key, description):
+        if len(description) < 20:
+            raise AssertionError('Project description must be at least 20 characters long')
+        return description
     def to_dict(self):
         return {
             'id': self.id,
