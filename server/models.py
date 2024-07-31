@@ -1,79 +1,99 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
-
-db = SQLAlchemy()
-bcrypt = Bcrypt()
-
-class Role(db.Model):
-    __tablename__ = 'roles'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), nullable=False, unique=True)
-
-    users = db.relationship('User', backref='role', lazy=True)
+from app import db
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
-    __tablename__ = 'users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
-
-    projects_owned = db.relationship('Project', backref='owner', lazy=True)
-    projects_member = db.relationship('Project', secondary='project_members', back_populates='members')
+    id = Column(Integer, primary_key=True)
+    username = Column(String(80), unique=True, nullable=False)
+    password_hash = Column(String(120), nullable=False)
+    email = Column(String(120), unique=True, nullable=False)
+    role_id = Column(Integer, ForeignKey('role.id'), nullable=False)
+    role = relationship('Role', back_populates='users')
+    projects = relationship('Project', back_populates='owner')
+    project_memberships = relationship('ProjectMember', back_populates='user')
 
     def set_password(self, password):
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf8')
+        self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        return bcrypt.check_password_hash(self.password_hash, password)
+        return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'role_id': self.role_id
+        }
+
+class Role(db.Model):
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80), unique=True, nullable=False)
+    users = relationship('User', back_populates='role')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name
+        }
 
 class Project(db.Model):
-    __tablename__ = 'projects'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    github_link = db.Column(db.String(200), nullable=False)
-    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-
-    cohorts = db.relationship('Cohort', secondary='project_cohorts', back_populates='projects')
-    members = db.relationship('User', secondary='project_members', back_populates='projects_member')
+    id = Column(Integer, primary_key=True)
+    name = Column(String(120), nullable=False)
+    description = Column(String(500))
+    owner_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    github_link = Column(String(200))
+    owner = relationship('User', back_populates='projects')
+    project_members = relationship('ProjectMember', back_populates='project')
+    project_cohorts = relationship('ProjectCohort', back_populates='project')
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            'github_link': self.github_link,
             'owner_id': self.owner_id,
-            'cohorts': [cohort.id for cohort in self.cohorts],
-            'members': [member.id for member in self.members]
+            'github_link': self.github_link
         }
-    
-    class Cohort(db.Model):
-        __tablename__ = 'cohorts'
 
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
+class Cohort(db.Model):
+    id = Column(Integer, primary_key=True)
+    name = Column(String(80), nullable=False)
+    description = Column(String(200))
+    project_cohorts = relationship('ProjectCohort', back_populates='cohort')
 
-    projects = db.relationship('Project', secondary='project_cohorts', back_populates='cohorts')
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description
+        }
 
-class ProjectMembers(db.Model):
-    _tablename_ = 'project_members'
+class ProjectMember(db.Model):
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    project = relationship('Project', back_populates='project_members')
+    user = relationship('User', back_populates='project_memberships')
 
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'user_id': self.user_id
+        }
 
-class ProjectCohorts(db.Model):
-    _tablename_ = 'project_cohorts'
+class ProjectCohort(db.Model):
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
+    cohort_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
+    project = relationship('Project', back_populates='project_cohorts')
+    cohort = relationship('Cohort', back_populates='project_cohorts')
 
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
-    cohort_id = db.Column(db.Integer, db.ForeignKey('cohorts.id'), nullable=False)
-
-
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'cohort_id': self.cohort_id
+        }
