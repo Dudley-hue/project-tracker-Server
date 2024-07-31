@@ -4,7 +4,7 @@ from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from config import Config
 
-app = Flask(_name_)
+app = Flask(__name__)
 app.config.from_object(Config)
 
 db = SQLAlchemy(app)
@@ -17,5 +17,5 @@ import routes  # Ensure this import comes after initializing app and db
 # Register Blueprints
 routes.register_blueprints(app)
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     app.run(debug=True)
