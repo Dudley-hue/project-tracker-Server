@@ -54,7 +54,8 @@ class Project(db.Model):
     owner = relationship('User', back_populates='projects')
     project_members = relationship('ProjectMember', back_populates='project')
     project_cohorts = relationship('ProjectCohort', back_populates='project')
-    
+    classroom_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
+    classroom = relationship('Classroom', back_populates='projects')
     @validates('name')
     def validate_name(self, key, name):
         if len(name) < 7:
@@ -86,7 +87,7 @@ class Cohort(db.Model):
     name = Column(String(80), nullable=False)
     description = Column(String(200))
     project_cohorts = relationship('ProjectCohort', back_populates='cohort')
-
+    classrooms = relationship('Classroom', back_populates='cohort')
 class ProjectMember(db.Model):
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
@@ -100,3 +101,20 @@ class ProjectCohort(db.Model):
     cohort_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
     project = relationship('Project', back_populates='project_cohorts')
     cohort = relationship('Cohort', back_populates='project_cohorts')
+class Classroom(db.Model):
+    id  = Column(Integer, primary_key=True)
+    name = Column(String(80), nullable=False)
+    description = Column(String(200))
+    cohort_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
+    cohort = relationship('Cohort', back_populates='classrooms')
+    projects = relationship('Project', back_populates='classroom')
+@validates('name')
+def validate_name(self, key, name):
+    if len(name) < 7:
+      raise AssertionError('Classroom name must be at least 7 characters long')
+    return name
+@validates('description')
+def validate_description(self, key, description):
+    if len(description) < 20:
+      raise AssertionError('Classroom description must be at least 20 characters long')
+    return description
