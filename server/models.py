@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
-
+#testing
 class User(db.Model):
     id = Column(Integer, primary_key=True)
     username = Column(String(80), unique=True, nullable=False)
