@@ -1,7 +1,6 @@
 from app import db
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship, validates
-import re
+from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
@@ -48,24 +47,6 @@ class Project(db.Model):
     owner = relationship('User', back_populates='projects')
     project_members = relationship('ProjectMember', back_populates='project')
     project_cohorts = relationship('ProjectCohort', back_populates='project')
-    
-    @validates('name')
-    def validate_name(self, key, name):
-        if len(name) < 7:
-            raise AssertionError('Project name must be at least 7 characters long')
-        return name
-
-    @validates('github_link')
-    def validate_github_link(self, key, github_link):
-        if not github_link.startswith('https://github.com/'):
-            raise AssertionError('GitHub link must start with "https://github.com/"')
-        return github_link
-    
-    @validates('description')
-    def validate_description(self, key, description):
-        if len(description) < 20:
-            raise AssertionError('Project description must be at least 20 characters long')
-        return description
 
     def to_dict(self):
         return {

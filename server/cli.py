@@ -33,31 +33,39 @@ def get_role_id_by_name(role_name):
     role = Role.query.filter_by(name=role_name).first()
     return role.id if role else None
 
-def get_current_user_role():
-    """Get the current user's role from the stored token."""
+def get_current_user():
+    """Get the current user from the stored token."""
     token = read_token()
     if not token:
         click.echo("Token not found")
         return None
-    
+
     try:
         decoded_token = decode_token(token)
-        return decoded_token['sub']['role_id']
+        user_id = decoded_token['sub']['id']
+        user = User.query.get(user_id)
+        return user
     except Exception as e:
         click.echo(f"Error decoding token: {e}")
         return None
+
+def get_current_user_role():
+    """Get the current user's role from the stored token."""
+    user = get_current_user()
+    if not user:
+        return None
+    return user.role.name
 
 def role_required(required_role):
     """Decorator to require a specific user role."""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            role_id = get_current_user_role()
-            if not role_id:
+            user_role = get_current_user_role()
+            if not user_role:
                 click.echo("Invalid or missing token")
                 return
 
-            user_role = Role.query.get(role_id).name
             if user_role != required_role:
                 click.echo(f"Access forbidden: {user_role} cannot perform this action")
                 return
@@ -143,14 +151,15 @@ def create_project(name, description, github_link, owner_email):
 def update_project(project_id, name, description, github_link):
     """Update an existing project."""
     with app.app_context():
-        role_id = get_current_user_role()
+        user = get_current_user()
         project = Project.query.get(project_id)
 
         if not project:
             click.echo('Project not found')
             return
 
-        if role_id == 1:  # Admin can update any project
+        if user.role.name == 'admin':
+            # Admin can update any project
             if name:
                 project.name = name
             if description:
@@ -160,7 +169,8 @@ def update_project(project_id, name, description, github_link):
                     click.echo('GitHub link must start with "https://github.com/"')
                     return
                 project.github_link = github_link
-        elif role_id == 2 and project.owner_id == User.query.get(get_current_user_role()).id:  # Student can only update their own projects
+        elif user.role.name == 'student' and project.owner_id == user.id:
+            # Students can only update their own projects
             if name:
                 project.name = name
             if description:
@@ -183,14 +193,26 @@ def update_project(project_id, name, description, github_link):
 def delete_project(project_id):
     """Delete a project."""
     with app.app_context():
+        user = get_current_user()
         project = Project.query.get(project_id)
+
         if not project:
             click.echo('Project not found')
             return
 
-        db.session.delete(project)
-        db.session.commit()
-        click.echo(f'Project {project_id} deleted successfully')
+        if user.role.name == 'admin' or project.owner_id == user.id:
+            # Admins can delete any project
+            # Students cannot delete their own projects
+            if user.role.name == 'student':
+                click.echo('Students cannot delete projects')
+                return
+
+            db.session.delete(project)
+            db.session.commit()
+            click.echo(f'Project {project_id} deleted successfully')
+        else:
+            click.echo('Permission denied')
+            return
 
 @app.cli.command('create-cohort')
 @click.argument('name')
@@ -209,7 +231,7 @@ def list_projects():
     """List all projects."""
     with app.app_context():
         role_id = get_current_user_role()
-        if role_id not in [1, 2]:  # Both admins and students can view projects
+        if role_id not in ['admin', 'student']:  # Both admins and students can view projects
             click.echo('Permission denied')
             return
 
@@ -222,7 +244,7 @@ def list_cohorts():
     """List all cohorts."""
     with app.app_context():
         role_id = get_current_user_role()
-        if role_id not in [1, 2]:  # Both admins and students can view cohorts
+        if role_id not in ['admin', 'student']:  # Both admins and students can view cohorts
             click.echo('Permission denied')
             return
 
@@ -236,7 +258,7 @@ def list_project_members(project_id):
     """List all members of a project."""
     with app.app_context():
         role_id = get_current_user_role()
-        if role_id not in [1, 2]:  # Both admins and students can view project members
+        if role_id not in ['admin', 'student']:  # Both admins and students can view project members
             click.echo('Permission denied')
             return
 
@@ -329,6 +351,7 @@ def remove_project_member(project_id, user_email):
 def remove_project_cohort(project_id, cohort_id):
     """Remove a cohort assignment from a project."""
     with app.app_context():
+        user = get_current_user()
         project = Project.query.get(project_id)
         cohort = Cohort.query.get(cohort_id)
 
@@ -338,6 +361,10 @@ def remove_project_cohort(project_id, cohort_id):
 
         if not cohort:
             click.echo('Cohort not found')
+            return
+
+        if project.owner_id != user.id:
+            click.echo('You can only remove cohorts from your own projects')
             return
 
         project_cohort = ProjectCohort.query.filter_by(project_id=project_id, cohort_id=cohort_id).first()
