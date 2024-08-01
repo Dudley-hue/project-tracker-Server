@@ -4,6 +4,9 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from app import db
 from models import User, Project, Cohort, ProjectMember, ProjectCohort
 from functools import wraps
+from flask import Blueprint, jsonify, request, make_response
+from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
+import os
 
 # Define Blueprints
 auth_bp = Blueprint('auth', __name__)
@@ -239,6 +242,14 @@ def get_user_projects(user_id):
     user = User.query.get_or_404(user_id)
     projects = Project.query.filter_by(owner_id=user_id).all()
     return jsonify([project.to_dict() for project in projects]), 200
+
+@auth_bp.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    """Log out the current user by removing the stored token."""
+    response = make_response(jsonify({"msg": "Logged out successfully"}), 200)
+    response.set_cookie('access_token', '', expires=0)
+    return response
 
 # Register Blueprints
 def register_blueprints(app):

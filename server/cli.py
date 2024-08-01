@@ -1,3 +1,4 @@
+import json
 import click
 from flask import current_app as app
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -5,16 +6,40 @@ from models import User, Project, Cohort, ProjectMember, ProjectCohort, Role
 from app import db
 from flask_jwt_extended import create_access_token, decode_token
 from functools import wraps
+import os
+
+CONFIG_FILE = 'config.json'
+
+def read_token():
+    """Read the token from the config file."""
+    try:
+        with open(CONFIG_FILE, 'r') as file:
+            config = json.load(file)
+            return config.get('jwt_token')
+    except Exception as e:
+        click.echo(f"Error reading token from config file: {e}")
+        return None
+
+def write_token(token):
+    """Write the token to the config file."""
+    try:
+        with open(CONFIG_FILE, 'w') as file:
+            json.dump({"jwt_token": token}, file)
+    except Exception as e:
+        click.echo(f"Error writing token to config file: {e}")
 
 def get_role_id_by_name(role_name):
     """Get the role ID by role name."""
     role = Role.query.filter_by(name=role_name).first()
-    if role:
-        return role.id
-    return None
+    return role.id if role else None
 
-def get_current_user_role(token):
-    """Get the current user's role from the token."""
+def get_current_user_role():
+    """Get the current user's role from the stored token."""
+    token = read_token()
+    if not token:
+        click.echo("Token not found")
+        return None
+    
     try:
         decoded_token = decode_token(token)
         return decoded_token['sub']['role_id']
@@ -23,17 +48,13 @@ def get_current_user_role(token):
         return None
 
 def role_required(required_role):
+    """Decorator to require a specific user role."""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            token = kwargs.get('token', None)
-            if not token:
-                click.echo("Missing token")
-                return
-
-            role_id = get_current_user_role(token)
+            role_id = get_current_user_role()
             if not role_id:
-                click.echo("Invalid token")
+                click.echo("Invalid or missing token")
                 return
 
             user_role = Role.query.get(role_id).name
@@ -77,23 +98,36 @@ def login(email, password):
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password_hash, password):
             token = create_access_token(identity={'id': user.id, 'role_id': user.role_id})
-            click.echo(f"JWT Token: {token}")
+            write_token(token)
+            click.echo(f"JWT Token stored successfully")
         else:
             click.echo('Invalid email or password')
+
+@app.cli.command('logout')
+def logout():
+    """Log out the current user by removing the stored token."""
+    if os.path.exists(CONFIG_FILE):
+        os.remove(CONFIG_FILE)
+        click.echo('Logged out successfully')
+    else:
+        click.echo('No token found to log out')
 
 @app.cli.command('create-project')
 @click.argument('name')
 @click.argument('description')
 @click.argument('github_link')
 @click.argument('owner_email')
-@click.argument('token')
 @role_required('admin')
-def create_project(name, description, github_link, owner_email, token):
+def create_project(name, description, github_link, owner_email):
     """Create a new project."""
     with app.app_context():
         owner = User.query.filter_by(email=owner_email).first()
         if not owner:
             click.echo('Owner not found')
+            return
+
+        if not github_link.startswith('https://github.com/'):
+            click.echo('GitHub link must start with "https://github.com/"')
             return
 
         new_project = Project(name=name, description=description, owner_id=owner.id, github_link=github_link)
@@ -106,11 +140,10 @@ def create_project(name, description, github_link, owner_email, token):
 @click.option('--name', default=None, help='New project name')
 @click.option('--description', default=None, help='New project description')
 @click.option('--github_link', default=None, help='New GitHub link')
-@click.argument('token')
-def update_project(project_id, name, description, github_link, token):
+def update_project(project_id, name, description, github_link):
     """Update an existing project."""
     with app.app_context():
-        role_id = get_current_user_role(token)
+        role_id = get_current_user_role()
         project = Project.query.get(project_id)
 
         if not project:
@@ -127,9 +160,7 @@ def update_project(project_id, name, description, github_link, token):
                     click.echo('GitHub link must start with "https://github.com/"')
                     return
                 project.github_link = github_link
-            db.session.commit()
-            click.echo(f'Project {project_id} updated successfully')
-        elif role_id == 2 and project.owner_id == User.query.filter_by(email=token).first().id:  # Student can only update their own projects
+        elif role_id == 2 and project.owner_id == User.query.get(get_current_user_role()).id:  # Student can only update their own projects
             if name:
                 project.name = name
             if description:
@@ -139,16 +170,17 @@ def update_project(project_id, name, description, github_link, token):
                     click.echo('GitHub link must start with "https://github.com/"')
                     return
                 project.github_link = github_link
-            db.session.commit()
-            click.echo(f'Project {project_id} updated successfully')
         else:
             click.echo('Permission denied')
+            return
+
+        db.session.commit()
+        click.echo(f'Project {project_id} updated successfully')
 
 @app.cli.command('delete-project')
 @click.argument('project_id', type=int)
-@click.argument('token')
 @role_required('admin')
-def delete_project(project_id, token):
+def delete_project(project_id):
     """Delete a project."""
     with app.app_context():
         project = Project.query.get(project_id)
@@ -163,9 +195,8 @@ def delete_project(project_id, token):
 @app.cli.command('create-cohort')
 @click.argument('name')
 @click.argument('description')
-@click.argument('token')
 @role_required('admin')
-def create_cohort(name, description, token):
+def create_cohort(name, description):
     """Create a new cohort."""
     with app.app_context():
         new_cohort = Cohort(name=name, description=description)
@@ -174,11 +205,10 @@ def create_cohort(name, description, token):
         click.echo(f'Cohort {name} created successfully')
 
 @app.cli.command('list-projects')
-@click.argument('token')
-def list_projects(token):
+def list_projects():
     """List all projects."""
     with app.app_context():
-        role_id = get_current_user_role(token)
+        role_id = get_current_user_role()
         if role_id not in [1, 2]:  # Both admins and students can view projects
             click.echo('Permission denied')
             return
@@ -188,11 +218,10 @@ def list_projects(token):
             click.echo(f'ID: {project.id}, Name: {project.name}, Description: {project.description}, GitHub: {project.github_link}')
 
 @app.cli.command('list-cohorts')
-@click.argument('token')
-def list_cohorts(token):
+def list_cohorts():
     """List all cohorts."""
     with app.app_context():
-        role_id = get_current_user_role(token)
+        role_id = get_current_user_role()
         if role_id not in [1, 2]:  # Both admins and students can view cohorts
             click.echo('Permission denied')
             return
@@ -203,11 +232,10 @@ def list_cohorts(token):
 
 @app.cli.command('list-project-members')
 @click.argument('project_id', type=int)
-@click.argument('token')
-def list_project_members(project_id, token):
+def list_project_members(project_id):
     """List all members of a project."""
     with app.app_context():
-        role_id = get_current_user_role(token)
+        role_id = get_current_user_role()
         if role_id not in [1, 2]:  # Both admins and students can view project members
             click.echo('Permission denied')
             return
@@ -225,9 +253,8 @@ def list_project_members(project_id, token):
 @app.cli.command('assign-project-cohort')
 @click.argument('project_id', type=int)
 @click.argument('cohort_id', type=int)
-@click.argument('token')
 @role_required('admin')
-def assign_project_cohort(project_id, cohort_id, token):
+def assign_project_cohort(project_id, cohort_id):
     """Assign a project to a cohort."""
     with app.app_context():
         project = Project.query.get(project_id)
@@ -249,10 +276,9 @@ def assign_project_cohort(project_id, cohort_id, token):
 @app.cli.command('assign-project-member')
 @click.argument('project_id', type=int)
 @click.argument('user_email')
-@click.argument('token')
 @role_required('admin')
-def assign_project_member(project_id, user_email, token):
-    """Add a user as a member of a project."""
+def assign_project_member(project_id, user_email):
+    """Assign a user to a project."""
     with app.app_context():
         project = Project.query.get(project_id)
         user = User.query.filter_by(email=user_email).first()
@@ -270,48 +296,54 @@ def assign_project_member(project_id, user_email, token):
         db.session.commit()
         click.echo(f'User {user_email} assigned to Project {project_id} successfully')
 
-@app.cli.command('view-project-details')
+@app.cli.command('remove-project-member')
 @click.argument('project_id', type=int)
-@click.argument('token')
-def view_project_details(project_id, token):
-    """View details of a specific project."""
+@click.argument('user_email')
+@role_required('admin')
+def remove_project_member(project_id, user_email):
+    """Remove a user from a project."""
     with app.app_context():
-        role_id = get_current_user_role(token)
         project = Project.query.get(project_id)
+        user = User.query.filter_by(email=user_email).first()
 
         if not project:
             click.echo('Project not found')
             return
 
-        click.echo(f'ID: {project.id}, Name: {project.name}, Description: {project.description}, GitHub: {project.github_link}')
-
-@app.cli.command('view-user-details')
-@click.argument('user_id', type=int)
-@click.argument('token')
-@role_required('admin')
-def view_user_details(user_id, token):
-    """View details of a specific user."""
-    with app.app_context():
-        user = User.query.get(user_id)
         if not user:
             click.echo('User not found')
             return
 
-        click.echo(f'ID: {user.id}, Username: {user.username}, Email: {user.email}, Role: {Role.query.get(user.role_id).name}')
+        project_member = ProjectMember.query.filter_by(project_id=project_id, user_id=user.id).first()
+        if project_member:
+            db.session.delete(project_member)
+            db.session.commit()
+            click.echo(f'User {user_email} removed from Project {project_id} successfully')
+        else:
+            click.echo(f'User {user_email} is not a member of Project {project_id}')
 
-@app.cli.command('delete-user')
-@click.argument('user_id', type=int)
-@click.argument('token')
+@app.cli.command('remove-project-cohort')
+@click.argument('project_id', type=int)
+@click.argument('cohort_id', type=int)
 @role_required('admin')
-def delete_user(user_id, token):
-    """Delete a user."""
+def remove_project_cohort(project_id, cohort_id):
+    """Remove a cohort assignment from a project."""
     with app.app_context():
-        user = User.query.get(user_id)
-        if not user:
-            click.echo('User not found')
+        project = Project.query.get(project_id)
+        cohort = Cohort.query.get(cohort_id)
+
+        if not project:
+            click.echo('Project not found')
             return
 
-        db.session.delete(user)
-        db.session.commit()
-        click.echo(f'User {user_id} deleted successfully')
+        if not cohort:
+            click.echo('Cohort not found')
+            return
 
+        project_cohort = ProjectCohort.query.filter_by(project_id=project_id, cohort_id=cohort_id).first()
+        if project_cohort:
+            db.session.delete(project_cohort)
+            db.session.commit()
+            click.echo(f'Cohort {cohort_id} removed from Project {project_id} successfully')
+        else:
+            click.echo(f'Cohort {cohort_id} is not assigned to Project {project_id}')
