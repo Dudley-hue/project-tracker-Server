@@ -46,20 +46,18 @@ def register():
     return jsonify({'message': 'User created successfully'}), 201
 
 # Login Route
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route('/auth/login', methods=['POST'])
 def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
 
     user = User.query.filter_by(email=email).first()
-
-    if not user or not check_password_hash(user.password_hash, password):
+    if user and check_password_hash(user.password_hash, password):
+        access_token = create_access_token(identity={'id': user.id, 'role_id': user.role_id})
+        return jsonify({'access_token': access_token}), 200
+    else:
         return jsonify({'message': 'Invalid credentials'}), 401
-
-    access_token = create_access_token(identity={'username': user.username, 'role_id': user.role_id})
-    return jsonify(access_token=access_token), 200
-
 # Get all Projects
 @api_bp.route('/projects', methods=['GET'])
 @jwt_required()
