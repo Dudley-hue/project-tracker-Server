@@ -42,7 +42,7 @@ def create_projects(users, num_projects):
             name=fake.sentence(nb_words=4),
             description=fake.paragraph(),
             owner_id=owner.id,
-            github_link=fake.url()
+            github_link=f"https://github.com/{fake.user_name()}/{fake.slug()}"
         )
         projects.append(project)
         db.session.add(project)

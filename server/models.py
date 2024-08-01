@@ -1,11 +1,7 @@
 from app import db
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
-
-
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import relationship, validates
 import re
-
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
@@ -17,7 +13,6 @@ class User(db.Model):
     role = relationship('Role', back_populates='users')
     projects = relationship('Project', back_populates='owner')
     project_memberships = relationship('ProjectMember', back_populates='user')
-
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -53,55 +48,13 @@ class Project(db.Model):
     owner = relationship('User', back_populates='projects')
     project_members = relationship('ProjectMember', back_populates='project')
     project_cohorts = relationship('ProjectCohort', back_populates='project')
-
-    
-    @validates('username')
-    def validate_username(self, key, username):
-        user = User.query.filter_by(username=username).first()
-        if user:
-            raise AssertionError('Username already exists')
-        return username
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-    @validates('password_hash')
-    def validate_password(self, key, password):
-        if len(password) < 8:
-            raise AssertionError('Password must be at least 8 characters long')
-        return password
-    @validates('email')
-    def validate_email(self, key, email):
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            raise ValueError('Invalid email address')
-        existing_email = User.query.filter_by(email=email).first()
-        if existing_email:
-            raise ValueError('Email already exists')
-        return email
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-class Role(db.Model):
-    id = Column(Integer, primary_key=True)
-    name = Column(String(80), unique=True, nullable=False)
-    users = relationship('User', back_populates='role')
-
-
-class Project(db.Model):
-    id = Column(Integer, primary_key=True)
-    name = Column(String(120), nullable=False)
-    description = Column(String(500))
-    owner_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    github_link = Column(String(200))
-    owner = relationship('User', back_populates='projects')
-    project_members = relationship('ProjectMember', back_populates='project')
-    project_cohorts = relationship('ProjectCohort', back_populates='project')
     
     @validates('name')
     def validate_name(self, key, name):
         if len(name) < 7:
             raise AssertionError('Project name must be at least 7 characters long')
         return name
-     
+
     @validates('github_link')
     def validate_github_link(self, key, github_link):
         if not github_link.startswith('https://github.com/'):
@@ -113,6 +66,7 @@ class Project(db.Model):
         if len(description) < 20:
             raise AssertionError('Project description must be at least 20 characters long')
         return description
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -121,7 +75,6 @@ class Project(db.Model):
             'owner_id': self.owner_id,
             'github_link': self.github_link
         }
-
 
 class Cohort(db.Model):
     id = Column(Integer, primary_key=True)
@@ -163,25 +116,3 @@ class ProjectCohort(db.Model):
             'project_id': self.project_id,
             'cohort_id': self.cohort_id
         }
-
-
-class Cohort(db.Model):
-    id = Column(Integer, primary_key=True)
-    name = Column(String(80), nullable=False)
-    description = Column(String(200))
-    project_cohorts = relationship('ProjectCohort', back_populates='cohort')
-
-class ProjectMember(db.Model):
-    id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    project = relationship('Project', back_populates='project_members')
-    user = relationship('User', back_populates='project_memberships')
-
-class ProjectCohort(db.Model):
-    id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey('project.id'), nullable=False)
-    cohort_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
-    project = relationship('Project', back_populates='project_cohorts')
-    cohort = relationship('Cohort', back_populates='project_cohorts')
-
