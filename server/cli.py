@@ -1,11 +1,9 @@
 import click
-from flask import Flask
-from app import create_app, db
-from models import User, Project, Cohort, ProjectMember, ProjectCohort
+from flask import current_app as app
 from werkzeug.security import generate_password_hash
 import requests
-
-app = create_app()
+from models import User, Project, Cohort, ProjectMember, ProjectCohort
+from app import db
 
 @app.cli.command('register')
 @click.argument('username')
@@ -47,6 +45,11 @@ def create_project(name, description, github_link, owner_email):
         click.echo('Owner not found')
         return
 
+    # Validate GitHub link
+    if not github_link.startswith('https://github.com/'):
+        click.echo('GitHub link must start with "https://github.com/"')
+        return
+
     new_project = Project(name=name, description=description, owner_id=owner.id, github_link=github_link)
     db.session.add(new_project)
     db.session.commit()
@@ -76,6 +79,10 @@ def update_project(project_id, name, description, github_link):
     if description:
         project.description = description
     if github_link:
+        # Validate GitHub link
+        if not github_link.startswith('https://github.com/'):
+            click.echo('GitHub link must start with "https://github.com/"')
+            return
         project.github_link = github_link
 
     db.session.commit()
@@ -162,10 +169,7 @@ def list_project_members(project_id):
         click.echo('Project not found')
         return
 
-    members = project.project_members
+    members = ProjectMember.query.filter_by(project_id=project_id).all()
     for member in members:
         user = User.query.get(member.user_id)
         click.echo(f'User ID: {user.id}, Username: {user.username}')
-
-if __name__ == '__main__':
-    app.run()
