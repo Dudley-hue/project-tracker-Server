@@ -250,6 +250,8 @@ def logout():
     response = make_response(jsonify({"msg": "Logged out successfully"}), 200)
     response.set_cookie('access_token', '', expires=0)
     return response
+
+#building routes for classroom
 #Get all Classrooms
 @api_bp.route('/classrooms', methods=['GET'])
 @jwt_required()
