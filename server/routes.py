@@ -282,6 +282,24 @@ def get_classroom_projects(classroom_id):
     classroom = Classroom.query.get_or_404(classroom_id)
     projects = Project.query.filter_by(classroom_id=classroom_id).all()
     return jsonify([project.to_dict() for project in projects]), 200
+#Assign Projects to Classrooms
+@api_bp.route('/project_classrooms', methods=['POST'])
+@jwt_required()
+def assign_project_to_classroom():
+    data = request.get_json()
+    project_id = data.get('project_id')
+    classroom_id = data.get('classroom_id')
+
+    new_project_classroom = ProjectClassroom(
+        project_id=project_id,
+        classroom_id=classroom_id
+    )
+    db.session.add(new_project_classroom)
+    db.session.commit()
+    return jsonify({
+        'project_id': new_project_classroom.project_id,
+        'classroom_id': new_project_classroom.classroom_id
+    }), 201
 
 # Register Blueprints
 def register_blueprints(app):
