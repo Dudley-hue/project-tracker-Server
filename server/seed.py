@@ -1,7 +1,7 @@
 
 from faker import Faker
 from app import app, db
-from models import User, Role, Project, Cohort, ProjectMember, ProjectCohort
+from models import User, Role, Project, Cohort, ProjectMember,Classroom,ProjectClassroom, ProjectCohort
 from werkzeug.security import generate_password_hash
 import random
 
@@ -80,7 +80,28 @@ def assign_projects_to_cohorts(projects, cohorts):
         )
         db.session.add(project_cohort)
     db.session.commit()
-    
+def create_classrooms(num_classrooms):
+    classrooms = []
+    for _ in range(num_classrooms):
+        classroom = Classroom(
+            name=fake.word(),
+            description=fake.paragraph()
+        )
+        classrooms.append(classroom)
+        db.session.add(classroom)
+    db.session.commit()
+    return classrooms
+
+def assign_projects_to_classrooms(projects, classrooms):
+    for project in projects:
+        classroom = random.choice(classrooms)
+        project_classroom = ProjectClassroom(
+            project_id=project.id,
+            classroom_id=classroom.id
+        )
+        db.session.add(project_classroom)
+    db.session.commit()
+
 
 if __name__ == "__main__":
     with app.app_context():
@@ -92,9 +113,14 @@ if __name__ == "__main__":
         num_projects = 15
         num_cohorts = 5
 
+        num_classrooms = 5
+
         users = create_users(num_users)
         projects = create_projects(users, num_projects)
         cohorts = create_cohorts(num_cohorts)
+
+        classrooms = create_classrooms(num_classrooms)
+        assign_projects_to_classrooms(projects, classrooms)
 
         assign_project_members(projects, users)
         assign_projects_to_cohorts(projects, cohorts)
