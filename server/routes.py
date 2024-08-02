@@ -276,6 +276,13 @@ def create_classroom():
     db.session.add(new_classroom)
     db.session.commit()
     return jsonify({'id': new_classroom.id, 'name': new_classroom.name, 'description': new_classroom.description}), 201
+#Get all Projects for a Specific Classroom
+@api_bp.route('/classrooms/<int:classroom_id>/projects', methods=['GET'])
+def get_classroom_projects(classroom_id):
+    classroom = Classroom.query.get_or_404(classroom_id)
+    projects = Project.query.filter_by(classroom_id=classroom_id).all()
+    return jsonify([project.to_dict() for project in projects]), 200
+
 # Register Blueprints
 def register_blueprints(app):
     app.register_blueprint(auth_bp, url_prefix='/auth')
