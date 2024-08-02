@@ -300,6 +300,15 @@ def assign_project_to_classroom():
         'project_id': new_project_classroom.project_id,
         'classroom_id': new_project_classroom.classroom_id
     }), 201
+#Delete a Classroom
+@api_bp.route('/classrooms/<int:classroom_id>', methods=['DELETE'])
+@jwt_required()
+@role_required(2)  # Admin role
+def delete_classroom(classroom_id):
+    classroom = Classroom.query.get_or_404(classroom_id)
+    db.session.delete(classroom)
+    db.session.commit()
+    return jsonify({'message': 'Classroom deleted successfully'}), 200
 
 # Register Blueprints
 def register_blueprints(app):
