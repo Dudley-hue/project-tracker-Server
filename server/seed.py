@@ -80,6 +80,7 @@ def assign_projects_to_cohorts(projects, cohorts):
         )
         db.session.add(project_cohort)
     db.session.commit()
+    
 
 if __name__ == "__main__":
     with app.app_context():
