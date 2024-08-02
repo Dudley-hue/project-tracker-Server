@@ -260,7 +260,22 @@ def get_classrooms():
         'name': classroom.name,
         'description': classroom.description
     } for classroom in classrooms]), 200
+#Craete a New Classroom(Admin only)
+@api_bp.route('/classrooms', methods=['POST'])
+@jwt_required()
+@role_required(2)  # Admin role
+def create_classroom():
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description')
 
+    new_classroom = Classroom(
+        name=name,
+        description=description
+    )
+    db.session.add(new_classroom)
+    db.session.commit()
+    return jsonify({'id': new_classroom.id, 'name': new_classroom.name, 'description': new_classroom.description}), 201
 # Register Blueprints
 def register_blueprints(app):
     app.register_blueprint(auth_bp, url_prefix='/auth')
