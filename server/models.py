@@ -74,7 +74,7 @@ class Classroom(db.Model):
     name = Column(String(80), nullable=False)
     description = Column(String(200))
     project_classrooms = relationship('ProjectClassroom', back_populates='classroom')
-
+    project_cohorts = relationship('ProjectCohort', back_populates='classroom')
     def to_dict(self):
         return {
             'id': self.id,
@@ -114,10 +114,12 @@ class ProjectCohort(db.Model):
     cohort_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
     project = relationship('Project', back_populates='project_cohorts')
     cohort = relationship('Cohort', back_populates='project_cohorts')
-
+    classroom_id = Column(Integer, ForeignKey('classroom.id'), nullable=True)
+    classroom = relationship('Classroom', back_populates='project_cohorts')
     def to_dict(self):
         return {
             'id': self.id,
             'project_id': self.project_id,
+            'classroom_id': self.classroom_id,
             'cohort_id': self.cohort_id
         }
