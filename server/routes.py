@@ -2,11 +2,8 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from app import db
-from models import User, Project, Cohort, ProjectMember, ProjectCohort
+from models import User, Project, Cohort, Class, ProjectMember
 from functools import wraps
-from flask import Blueprint, jsonify, request, make_response
-from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
-import os
 
 # Define Blueprints
 auth_bp = Blueprint('auth', __name__)
@@ -49,18 +46,20 @@ def register():
     return jsonify({'message': 'User created successfully'}), 201
 
 # Login Route
-@auth_bp.route('/auth/login', methods=['POST'])
+@auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
 
     user = User.query.filter_by(email=email).first()
-    if user and check_password_hash(user.password_hash, password):
-        access_token = create_access_token(identity={'id': user.id, 'role_id': user.role_id})
-        return jsonify({'access_token': access_token}), 200
-    else:
+
+    if not user or not check_password_hash(user.password_hash, password):
         return jsonify({'message': 'Invalid credentials'}), 401
+
+    access_token = create_access_token(identity={'username': user.username, 'role_id': user.role_id})
+    return jsonify(access_token=access_token), 200
+
 # Get all Projects
 @api_bp.route('/projects', methods=['GET'])
 @jwt_required()
@@ -84,12 +83,14 @@ def create_project():
     description = data.get('description')
     github_link = data.get('github_link')
     owner_id = get_jwt_identity()['user_id']
+    class_id = data.get('class_id')  # Include class_id in the request data
 
     new_project = Project(
         name=name,
         description=description,
         owner_id=owner_id,
-        github_link=github_link
+        github_link=github_link,
+        class_id=class_id
     )
     db.session.add(new_project)
     db.session.commit()
@@ -152,6 +153,32 @@ def create_cohort():
     db.session.commit()
     return jsonify({'id': new_cohort.id, 'name': new_cohort.name, 'description': new_cohort.description}), 201
 
+# Get all Classes
+@api_bp.route('/classes', methods=['GET'])
+@jwt_required()
+def get_classes():
+    classes = Class.query.all()
+    return jsonify([cls.to_dict() for cls in classes]), 200
+
+# Create a New Class (Admin only)
+@api_bp.route('/classes', methods=['POST'])
+@jwt_required()
+@role_required(2)  # Admin role
+def create_class():
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description')
+    cohort_id = data.get('cohort_id')  # Include cohort_id in the request data
+
+    new_class = Class(
+        name=name,
+        description=description,
+        cohort_id=cohort_id
+    )
+    db.session.add(new_class)
+    db.session.commit()
+    return jsonify(new_class.to_dict()), 201
+
 # Get all Project Members
 @api_bp.route('/project_members', methods=['GET'])
 @jwt_required()
@@ -188,36 +215,6 @@ def create_project_member():
         'user_id': new_project_member.user_id
     }), 201
 
-# Get all Project Cohorts
-@api_bp.route('/project_cohorts', methods=['GET'])
-@jwt_required()
-def get_project_cohorts():
-    project_cohorts = ProjectCohort.query.all()
-    return jsonify([{
-        'project_id': pc.project_id,
-        'cohort_id': pc.cohort_id
-    } for pc in project_cohorts]), 200
-
-# Assign Projects to Cohorts (Admin only)
-@api_bp.route('/project_cohorts', methods=['POST'])
-@jwt_required()
-@role_required(2)  # Admin role
-def assign_project_to_cohort():
-    data = request.get_json()
-    project_id = data.get('project_id')
-    cohort_id = data.get('cohort_id')
-
-    new_project_cohort = ProjectCohort(
-        project_id=project_id,
-        cohort_id=cohort_id
-    )
-    db.session.add(new_project_cohort)
-    db.session.commit()
-    return jsonify({
-        'project_id': new_project_cohort.project_id,
-        'cohort_id': new_project_cohort.cohort_id
-    }), 201
-
 # Get all Users (Admin only)
 @api_bp.route('/users', methods=['GET'])
 @jwt_required()
@@ -232,6 +229,20 @@ def get_users():
 @role_required(2)  # Admin role
 def delete_user(user_id):
     user = User.query.get_or_404(user_id)
+
+    # Reassign user's projects to another user (admin) before deleting the user
+    admin_user = User.query.filter_by(email='adminuser1@example.com').first()
+    if not admin_user:
+        return jsonify({'message': 'Admin user not found for reassignment'}), 404
+
+    for project in user.projects:
+        project.owner_id = admin_user.id
+
+    db.session.commit()
+
+    # Delete user's project memberships
+    ProjectMember.query.filter_by(user_id=user_id).delete()
+
     db.session.delete(user)
     db.session.commit()
     return jsonify({'message': 'User deleted successfully'}), 200
@@ -242,14 +253,6 @@ def get_user_projects(user_id):
     user = User.query.get_or_404(user_id)
     projects = Project.query.filter_by(owner_id=user_id).all()
     return jsonify([project.to_dict() for project in projects]), 200
-
-@auth_bp.route('/logout', methods=['POST'])
-@jwt_required()
-def logout():
-    """Log out the current user by removing the stored token."""
-    response = make_response(jsonify({"msg": "Logged out successfully"}), 200)
-    response.set_cookie('access_token', '', expires=0)
-    return response
 
 # Register Blueprints
 def register_blueprints(app):
