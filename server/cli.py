@@ -1,10 +1,8 @@
 import click
 from flask import current_app as app
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import User, Project, Role, Class, Cohort, ProjectMember  # Added imports
+from models import User, Project, Role, Class, Cohort, ProjectMember
 from app import db
-from flask_jwt_extended import create_access_token, decode_token
-from functools import wraps
 
 def get_role_id_by_name(role_name):
     """Get the role ID by role name."""
@@ -12,31 +10,6 @@ def get_role_id_by_name(role_name):
     if role:
         return role.id
     return None
-
-def role_required(required_role):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            token = kwargs.get('token', None)
-            if not token:
-                click.echo("Missing token")
-                return
-            
-            try:
-                decoded_token = decode_token(token)
-                user_role_id = decoded_token['sub']['role_id']
-                user_role = Role.query.get(user_role_id).name
-            except Exception as e:
-                click.echo("Invalid token")
-                return
-
-            if user_role != required_role:
-                click.echo(f"Access forbidden: {user_role} cannot perform this action")
-                return
-
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
 
 @app.cli.command('register')
 @click.argument('username')
@@ -61,25 +34,10 @@ def register(username, email, password, role_name):
         db.session.commit()
         click.echo(f'User {username} registered successfully')
 
-@app.cli.command('login')
-@click.argument('email')
-@click.argument('password')
-def login(email, password):
-    """Login a user."""
-    with app.app_context():
-        user = User.query.filter_by(email=email).first()
-        if user and check_password_hash(user.password_hash, password):
-            token = create_access_token(identity={'id': user.id, 'role_id': user.role_id})
-            click.echo(f"JWT Token: {token}")
-        else:
-            click.echo('Invalid email or password')
-
 @app.cli.command('create-cohort')
 @click.argument('name')
 @click.argument('description')
-@click.argument('token')
-@role_required('admin')
-def create_cohort(name, description, token):
+def create_cohort(name, description):
     """Create a new cohort."""
     with app.app_context():
         new_cohort = Cohort(name=name, description=description)
@@ -93,8 +51,7 @@ def create_cohort(name, description, token):
 @click.argument('github_link')
 @click.argument('owner_email')
 @click.argument('class_id')
-@click.argument('token')
-def create_project(name, description, github_link, owner_email, class_id, token):
+def create_project(name, description, github_link, owner_email, class_id):
     """Create a new project."""
     with app.app_context():
         owner = User.query.filter_by(email=owner_email).first()
@@ -108,8 +65,7 @@ def create_project(name, description, github_link, owner_email, class_id, token)
         click.echo(f'Project {name} created successfully')
 
 @app.cli.command('list-projects')
-@click.argument('token')
-def list_projects(token):
+def list_projects():
     """List all projects."""
     with app.app_context():
         projects = Project.query.all()
@@ -120,9 +76,7 @@ def list_projects(token):
 @click.argument('name')
 @click.argument('description')
 @click.argument('cohort_id')
-@click.argument('token')
-@role_required('admin')
-def create_class(name, description, cohort_id, token):
+def create_class(name, description, cohort_id):
     """Create a new class."""
     with app.app_context():
         new_class = Class(name=name, description=description, cohort_id=cohort_id)
@@ -131,8 +85,7 @@ def create_class(name, description, cohort_id, token):
         click.echo(f'Class {name} created successfully')
 
 @app.cli.command('list-classes')
-@click.argument('token')
-def list_classes(token):
+def list_classes():
     """List all classes."""
     with app.app_context():
         classes = Class.query.all()
@@ -142,9 +95,7 @@ def list_classes(token):
 @app.cli.command('assign-user-to-class')
 @click.argument('user_email')
 @click.argument('class_id')
-@click.argument('token')
-@role_required('admin')
-def assign_user_to_class(user_email, class_id, token):
+def assign_user_to_class(user_email, class_id):
     """Assign a user to a class."""
     with app.app_context():
         user = User.query.filter_by(email=user_email).first()
@@ -163,9 +114,7 @@ def assign_user_to_class(user_email, class_id, token):
 
 @app.cli.command('delete-user')
 @click.argument('user_id')
-@click.argument('token')
-@role_required('admin')
-def delete_user(user_id, token):
+def delete_user(user_id):
     """Delete a user."""
     with app.app_context():
         user = User.query.get_or_404(user_id)
