@@ -1,3 +1,4 @@
+import json
 from faker import Faker
 from app import create_app, db
 from models import User, Role, Project, Cohort, ProjectMember, Class
@@ -36,12 +37,19 @@ def create_projects(users, classes, num_projects):
     for _ in range(num_projects):
         owner = random.choice(users)
         class_ = random.choice(classes)  # Assign a random class to the project
+        
+        # Ensure that the description meets the minimum length requirement
+        description = fake.paragraph()
+        while len(description) < 20:
+            description = fake.paragraph()
+        
         project = Project(
             name=fake.sentence(nb_words=4),
-            description=fake.paragraph(),
+            description=description,
             owner_id=owner.id,
             github_link=f"https://github.com/{fake.user_name()}/{fake.slug()}",
-            class_id=class_.id  # Assign the class_id here
+            class_id=class_.id,  # Assign the class_id here
+            poster_url=fake.image_url()  # Generate a random image URL for the poster
         )
         projects.append(project)
         db.session.add(project)
@@ -86,6 +94,17 @@ def assign_project_members(projects, users):
             db.session.add(project_member)
     db.session.commit()
 
+def save_to_json_file(users, cohorts, classes, projects):
+    data = {
+        "users": [user.to_dict() for user in users],
+        "cohorts": [cohort.to_dict() for cohort in cohorts],
+        "classes": [class_.to_dict() for class_ in classes],
+        "projects": [project.to_dict() for project in projects],
+    }
+    
+    with open("data.json", "w") as file:
+        json.dump(data, file, indent=4)
+
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():
@@ -104,5 +123,7 @@ if __name__ == "__main__":
         projects = create_projects(users, classes, num_projects)
 
         assign_project_members(projects, users)
+        
+        save_to_json_file(users, cohorts, classes, projects)
 
-        print("Database seeded successfully!")
+        print("Database seeded and data saved to data.json successfully!")

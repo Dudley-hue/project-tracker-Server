@@ -1,0 +1,260 @@
+{
+    "users": [
+        {
+            "id": 1,
+            "username": "iperry",
+            "email": "kaitlinjohnson@example.com",
+            "role_id": 2
+        },
+        {
+            "id": 2,
+            "username": "rhartman",
+            "email": "turnerdana@example.net",
+            "role_id": 2
+        },
+        {
+            "id": 3,
+            "username": "hjohns",
+            "email": "baileysmith@example.org",
+            "role_id": 2
+        },
+        {
+            "id": 4,
+            "username": "wrightgabriella",
+            "email": "brendawhite@example.net",
+            "role_id": 2
+        },
+        {
+            "id": 5,
+            "username": "fhowell",
+            "email": "laurabaker@example.com",
+            "role_id": 2
+        },
+        {
+            "id": 6,
+            "username": "christopherjones",
+            "email": "ashleygomez@example.net",
+            "role_id": 2
+        },
+        {
+            "id": 7,
+            "username": "stewartnina",
+            "email": "xphillips@example.net",
+            "role_id": 2
+        },
+        {
+            "id": 8,
+            "username": "faguirre",
+            "email": "stephaniewalsh@example.com",
+            "role_id": 2
+        },
+        {
+            "id": 9,
+            "username": "william44",
+            "email": "stephenwilliams@example.net",
+            "role_id": 2
+        },
+        {
+            "id": 10,
+            "username": "hollyblanchard",
+            "email": "koliver@example.com",
+            "role_id": 2
+        }
+    ],
+    "cohorts": [
+        {
+            "id": 1,
+            "name": "seat",
+            "description": "High stand everything movie close. Break wife voice appear fund green performance. Current guy if appear."
+        },
+        {
+            "id": 2,
+            "name": "population",
+            "description": "Speech class analysis believe quickly certainly. Give performance significant improve guy work key attention. Capital form explain end both scientist."
+        },
+        {
+            "id": 3,
+            "name": "certainly",
+            "description": "Thank well consumer me. Fight audience scientist identify deal."
+        },
+        {
+            "id": 4,
+            "name": "market",
+            "description": "What money assume peace action involve. Outside pay range run glass. Green no international military fear yard child."
+        },
+        {
+            "id": 5,
+            "name": "risk",
+            "description": "Son series certainly. World tax hand prevent."
+        }
+    ],
+    "classes": [
+        {
+            "id": 1,
+            "name": "page",
+            "description": "Bring surface option compare people. Pick describe news remain discover build.",
+            "cohort_id": 1
+        },
+        {
+            "id": 2,
+            "name": "rate",
+            "description": "Among cover form just two. Glass then letter central space leader speak.",
+            "cohort_id": 1
+        },
+        {
+            "id": 3,
+            "name": "born",
+            "description": "Tell image act project while west piece once. Partner energy service hold.",
+            "cohort_id": 5
+        },
+        {
+            "id": 4,
+            "name": "keep",
+            "description": "Recognize environment across evidence defense several early leg. Street herself see set fine.",
+            "cohort_id": 4
+        },
+        {
+            "id": 5,
+            "name": "participant",
+            "description": "Current community make impact stand college prevent doctor. Someone star human either name.",
+            "cohort_id": 1
+        }
+    ],
+    "projects": [
+        {
+            "id": 1,
+            "name": "Pick lot.",
+            "description": "Sometimes law mother effect. Natural yourself time fish college adult yes bit.",
+            "owner_id": 7,
+            "github_link": "https://github.com/qbryant/receive-lot-land",
+            "class_id": 3,
+            "poster_url": "https://dummyimage.com/975x378"
+        },
+        {
+            "id": 2,
+            "name": "Institution oil onto society.",
+            "description": "Protect new child pressure probably. Wide although stop few street because. Century treat citizen certainly west.",
+            "owner_id": 3,
+            "github_link": "https://github.com/charlottegiles/provide-can-event",
+            "class_id": 3,
+            "poster_url": "https://dummyimage.com/490x283"
+        },
+        {
+            "id": 3,
+            "name": "Necessary director note floor.",
+            "description": "Opportunity especially southern whom. Century television move any want market police. East walk into mother school memory candidate story.",
+            "owner_id": 4,
+            "github_link": "https://github.com/reyesdavid/window-development",
+            "class_id": 2,
+            "poster_url": "https://placekitten.com/80/659"
+        },
+        {
+            "id": 4,
+            "name": "What down teach especially travel.",
+            "description": "Learn none this true range his surface. Size especially four it ground. Young everything event key deep.",
+            "owner_id": 7,
+            "github_link": "https://github.com/beverlymoore/by-accept-trip-boy",
+            "class_id": 2,
+            "poster_url": "https://dummyimage.com/205x695"
+        },
+        {
+            "id": 5,
+            "name": "Show include.",
+            "description": "Couple again finish. Attention ok man discuss reason this before.",
+            "owner_id": 4,
+            "github_link": "https://github.com/pzuniga/down-low-through",
+            "class_id": 4,
+            "poster_url": "https://picsum.photos/428/971"
+        },
+        {
+            "id": 6,
+            "name": "Billion tree adult possible by.",
+            "description": "Never two east practice. Character role quality example guess respond.",
+            "owner_id": 3,
+            "github_link": "https://github.com/leonard34/police-financial",
+            "class_id": 3,
+            "poster_url": "https://placekitten.com/556/129"
+        },
+        {
+            "id": 7,
+            "name": "Feel true experience.",
+            "description": "Develop break pretty city national sea. Student else source huge age. Short market fly religious.",
+            "owner_id": 2,
+            "github_link": "https://github.com/michelle95/college-range-hear",
+            "class_id": 1,
+            "poster_url": "https://dummyimage.com/920x421"
+        },
+        {
+            "id": 8,
+            "name": "Foreign purpose pretty what.",
+            "description": "Edge by operation address whose. Through resource baby begin wrong player suddenly.",
+            "owner_id": 6,
+            "github_link": "https://github.com/lisasantos/possible-gun-that",
+            "class_id": 4,
+            "poster_url": "https://dummyimage.com/219x615"
+        },
+        {
+            "id": 9,
+            "name": "Dinner better.",
+            "description": "Child outside great note field organization west.",
+            "owner_id": 4,
+            "github_link": "https://github.com/leslie15/number-today",
+            "class_id": 3,
+            "poster_url": "https://dummyimage.com/815x959"
+        },
+        {
+            "id": 10,
+            "name": "Into season history eye.",
+            "description": "Us hard home main this. Public majority discuss over study. Onto wear take prepare phone.",
+            "owner_id": 2,
+            "github_link": "https://github.com/sloanjohn/cause-pull-thank",
+            "class_id": 4,
+            "poster_url": "https://picsum.photos/460/84"
+        },
+        {
+            "id": 11,
+            "name": "Rate almost eat.",
+            "description": "Our market in miss tree. Eight address describe back show culture. Would day because range general contain public.",
+            "owner_id": 2,
+            "github_link": "https://github.com/nbailey/employee-itself",
+            "class_id": 1,
+            "poster_url": "https://picsum.photos/74/137"
+        },
+        {
+            "id": 12,
+            "name": "Court family perform.",
+            "description": "Television anyone read know decision. Challenge none player. Cell fast president very.",
+            "owner_id": 1,
+            "github_link": "https://github.com/clinekaren/day-pick-already",
+            "class_id": 1,
+            "poster_url": "https://picsum.photos/787/900"
+        },
+        {
+            "id": 13,
+            "name": "We magazine every partner law.",
+            "description": "Allow less early place ability young network. Born strong color piece. Bag Mr rock perhaps education mention.",
+            "owner_id": 9,
+            "github_link": "https://github.com/ericacarter/cup-consumer",
+            "class_id": 4,
+            "poster_url": "https://picsum.photos/217/490"
+        },
+        {
+            "id": 14,
+            "name": "Truth over.",
+            "description": "Side open administration provide tree include my. Pick low fight style fine available feel. Talk community network model several stage among.",
+            "owner_id": 5,
+            "github_link": "https://github.com/jaredjones/hundred-point",
+            "class_id": 3,
+            "poster_url": "https://picsum.photos/889/453"
+        },
+        {
+            "id": 15,
+            "name": "Trade everybody.",
+            "description": "City success quality glass let free mean season. Country own west magazine let. Game down line enjoy miss career.",
+            "owner_id": 8,
+            "github_link": "https://github.com/travis56/school-main-above",
+            "class_id": 3,
+            "poster_url": "https://placekitten.com/325/350"
+        }
+    ]
+}
