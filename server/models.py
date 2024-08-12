@@ -66,7 +66,6 @@ class Class(db.Model):
             'description': self.description,
             'cohort_id': self.cohort_id
         }
-
 class Project(db.Model):
     id = Column(Integer, primary_key=True)
     name = Column(String(120), nullable=False)
@@ -87,7 +86,7 @@ class Project(db.Model):
 
     @validates('github_link')
     def validate_github_link(self, key, github_link):
-        if not github_link.startswith('https://github.com/'):
+        if github_link and not github_link.startswith('https://github.com/'):
             raise AssertionError('GitHub link must start with "https://github.com/"')
         return github_link
     

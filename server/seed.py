@@ -1,129 +1,75 @@
 import json
-from faker import Faker
 from app import create_app, db
 from models import User, Role, Project, Cohort, ProjectMember, Class
 from werkzeug.security import generate_password_hash
-import random
 
-fake = Faker()
+def load_data_from_json(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+        return data
 
-def create_roles():
-    roles = ['admin', 'student']
-    for role_name in roles:
-        role = Role(name=role_name)
-        db.session.add(role)
-    db.session.commit()
-
-def get_role_by_name(role_name):
-    return Role.query.filter_by(name=role_name).first()
-
-def create_users(num_users):
-    users = []
-    student_role = get_role_by_name('student')
-    for _ in range(num_users):
+def import_users(data):
+    users = data.get('users', [])
+    for user_data in users:
+        password_hash = user_data.get('password_hash', generate_password_hash('default_password'))
         user = User(
-            username=fake.user_name(),
-            email=fake.email(),
-            password_hash=generate_password_hash(fake.password()),  # Hash the password
-            role_id=student_role.id  # Assign the role_id here
+            id=user_data['id'],
+            username=user_data['username'],
+            email=user_data['email'],
+            password_hash=password_hash,
+            role_id=user_data.get('role_id', 2)
         )
-        users.append(user)
         db.session.add(user)
     db.session.commit()
-    return users
 
-def create_projects(users, classes, num_projects):
-    projects = []
-    for _ in range(num_projects):
-        owner = random.choice(users)
-        class_ = random.choice(classes)  # Assign a random class to the project
-        
-        # Ensure that the description meets the minimum length requirement
-        description = fake.paragraph()
-        while len(description) < 20:
-            description = fake.paragraph()
-        
-        project = Project(
-            name=fake.sentence(nb_words=4),
-            description=description,
-            owner_id=owner.id,
-            github_link=f"https://github.com/{fake.user_name()}/{fake.slug()}",
-            class_id=class_.id,  # Assign the class_id here
-            poster_url=fake.image_url()  # Generate a random image URL for the poster
-        )
-        projects.append(project)
-        db.session.add(project)
-    db.session.commit()
-    return projects
-
-def create_cohorts(num_cohorts):
-    cohorts = []
-    for _ in range(num_cohorts):
+def import_cohorts(data):
+    cohorts = data.get('cohorts', [])
+    for cohort_data in cohorts:
         cohort = Cohort(
-            name=fake.word(),
-            description=fake.paragraph()
+            id=cohort_data['id'],
+            name=cohort_data['name'],
+            description=cohort_data['description']
         )
-        cohorts.append(cohort)
         db.session.add(cohort)
     db.session.commit()
-    return cohorts
 
-def create_classes(cohorts, num_classes):
-    classes = []
-    for _ in range(num_classes):
-        cohort = random.choice(cohorts)  # Assign a random cohort to the class
+def import_classes(data):
+    classes = data.get('classes', [])
+    for class_data in classes:
         class_ = Class(
-            name=fake.word(),
-            description=fake.paragraph(),
-            cohort_id=cohort.id  # Assign the cohort_id here
+            id=class_data['id'],
+            name=class_data['name'],
+            description=class_data['description'],
+            cohort_id=class_data['cohort_id']
         )
-        classes.append(class_)
         db.session.add(class_)
     db.session.commit()
-    return classes
 
-def assign_project_members(projects, users):
-    for project in projects:
-        num_members = random.randint(1, 5)
-        members = random.sample(users, num_members)
-        for member in members:
-            project_member = ProjectMember(
-                project_id=project.id,
-                user_id=member.id
-            )
-            db.session.add(project_member)
+def import_projects(data):
+    projects = data.get('projects', [])
+    for project_data in projects:
+        project = Project(
+            id=project_data['id'],
+            name=project_data['name'],
+            description=project_data['description'],
+            owner_id=project_data['owner_id'],
+            github_link=project_data['github_link'],
+            class_id=project_data['class_id'],
+            poster_url=project_data.get('poster_url')
+        )
+        db.session.add(project)
     db.session.commit()
-
-def save_to_json_file(users, cohorts, classes, projects):
-    data = {
-        "users": [user.to_dict() for user in users],
-        "cohorts": [cohort.to_dict() for cohort in cohorts],
-        "classes": [class_.to_dict() for class_ in classes],
-        "projects": [project.to_dict() for project in projects],
-    }
-    
-    with open("data.json", "w") as file:
-        json.dump(data, file, indent=4)
 
 if __name__ == "__main__":
     app = create_app()
     with app.app_context():
-        db.drop_all()  # Drops all tables
-        db.create_all()  # Creates all tables
+        db.drop_all()
+        db.create_all()
 
-        create_roles()
-        num_users = 10
-        num_projects = 15
-        num_cohorts = 5
-        num_classes = 5  # Define the number of classes to create
+        data = load_data_from_json('data.json')
+        import_users(data)
+        import_cohorts(data)
+        import_classes(data)
+        import_projects(data)
 
-        users = create_users(num_users)
-        cohorts = create_cohorts(num_cohorts)
-        classes = create_classes(cohorts, num_classes)  # Create classes with assigned cohorts
-        projects = create_projects(users, classes, num_projects)
-
-        assign_project_members(projects, users)
-        
-        save_to_json_file(users, cohorts, classes, projects)
-
-        print("Database seeded and data saved to data.json successfully!")
+        print("Data imported successfully!")

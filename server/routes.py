@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 from app import db
 from models import User, Project, Cohort, Class, ProjectMember
 
-# Define Blueprints
 api_bp = Blueprint('api', __name__)
 
 # Test Route
@@ -29,19 +28,33 @@ def create_project():
     name = data.get('name')
     description = data.get('description')
     github_link = data.get('github_link')
-    owner_id = data.get('owner_id')  # Now you must provide owner_id in the request
-    class_id = data.get('class_id')  # Include class_id in the request data
+    owner_id = data.get('owner_id')
+    class_id = data.get('class_id')
+    poster_url = data.get('poster_url', '')  # Handle optional poster_url with default empty string
 
+    # Check if required fields are provided
+    if not name or not description or not owner_id or not class_id:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    # Create a new Project instance
     new_project = Project(
         name=name,
         description=description,
         owner_id=owner_id,
         github_link=github_link,
-        class_id=class_id
+        class_id=class_id,
+        poster_url=poster_url
     )
-    db.session.add(new_project)
-    db.session.commit()
-    return jsonify(new_project.to_dict()), 201
+
+    try:
+        db.session.add(new_project)
+        db.session.commit()
+        return jsonify(new_project.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error: {e}")
+        return jsonify({'error': 'Failed to create project'}), 500
+
 
 # Update a Project
 @api_bp.route('/projects/<int:project_id>', methods=['PUT'])
@@ -52,7 +65,8 @@ def update_project(project_id):
     project.name = data.get('name', project.name)
     project.description = data.get('description', project.description)
     project.github_link = data.get('github_link', project.github_link)
-    
+    project.poster_url = data.get('poster_url', project.poster_url)  # Handle poster_url
+
     db.session.commit()
     return jsonify(project.to_dict()), 200
 
@@ -67,7 +81,6 @@ def delete_project(project_id):
 # Get All Cohorts
 @api_bp.route('/cohorts', methods=['GET'])
 def get_cohorts():
-    print("Cohorts endpoint hit")  # Debug statement
     cohorts = Cohort.query.all()
     if not cohorts:
         return jsonify({"message": "No cohorts found"}), 404
@@ -77,7 +90,6 @@ def get_cohorts():
         'name': cohort.name,
         'description': cohort.description
     } for cohort in cohorts]), 200
-
 
 # Create New Cohort
 @api_bp.route('/cohorts', methods=['POST'])
@@ -92,7 +104,7 @@ def create_cohort():
     )
     db.session.add(new_cohort)
     db.session.commit()
-    return jsonify({'id': new_cohort.id, 'name': new_cohort.name, 'description': new_cohort.description}), 201
+    return jsonify(new_cohort.to_dict()), 201
 
 # Get All Classes
 @api_bp.route('/classes', methods=['GET'])
@@ -111,7 +123,7 @@ def create_class():
     data = request.get_json()
     name = data.get('name')
     description = data.get('description')
-    cohort_id = data.get('cohort_id')  # Include cohort_id in the request data
+    cohort_id = data.get('cohort_id')
 
     new_class = Class(
         name=name,
@@ -126,10 +138,7 @@ def create_class():
 @api_bp.route('/project_members', methods=['GET'])
 def get_project_members():
     project_members = ProjectMember.query.all()
-    return jsonify([{
-        'project_id': pm.project_id,
-        'user_id': pm.user_id
-    } for pm in project_members]), 200
+    return jsonify([pm.to_dict() for pm in project_members]), 200
 
 # Create a Project Member
 @api_bp.route('/project_members', methods=['POST'])
@@ -144,10 +153,7 @@ def create_project_member():
     )
     db.session.add(new_project_member)
     db.session.commit()
-    return jsonify({
-        'project_id': new_project_member.project_id,
-        'user_id': new_project_member.user_id
-    }), 201
+    return jsonify(new_project_member.to_dict()), 201
 
 # Get All Users
 @api_bp.route('/users', methods=['GET'])
