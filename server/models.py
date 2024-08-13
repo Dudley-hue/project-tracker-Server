@@ -14,7 +14,7 @@ class User(db.Model):
     project_memberships = relationship('ProjectMember', back_populates='user')
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -24,7 +24,8 @@ class User(db.Model):
             'id': self.id,
             'username': self.username,
             'email': self.email,
-            'role_id': self.role_id
+            'role_id': self.role_id,
+            'role': self.role.name
         }
 
 class Role(db.Model):
@@ -48,7 +49,8 @@ class Cohort(db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'description': self.description
+            'description': self.description,
+            'classes': [cls.to_dict() for cls in self.classes]
         }
 
 class Class(db.Model):
@@ -64,15 +66,17 @@ class Class(db.Model):
             'id': self.id,
             'name': self.name,
             'description': self.description,
-            'cohort_id': self.cohort_id
+            'cohort_id': self.cohort_id,
+            'cohort_name': self.cohort.name
         }
+
 class Project(db.Model):
     id = Column(Integer, primary_key=True)
     name = Column(String(120), nullable=False)
     description = Column(String(500))
     owner_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     github_link = Column(String(200))
-    poster_url = Column(String(200))  # New column for poster URL
+    poster_url = Column(String(200))
     owner = relationship('User', back_populates='projects')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     class_ = relationship('Class', back_populates='projects')
@@ -80,8 +84,8 @@ class Project(db.Model):
     
     @validates('name')
     def validate_name(self, key, name):
-        if len(name) < 7:
-            raise AssertionError('Project name must be at least 7 characters long')
+        if len(name) < 2:
+            raise AssertionError('Project name must be at least 2 characters long')
         return name
 
     @validates('github_link')
@@ -92,8 +96,8 @@ class Project(db.Model):
     
     @validates('description')
     def validate_description(self, key, description):
-        if len(description) < 20:
-            raise AssertionError('Project description must be at least 20 characters long')
+        if len(description) < 5:
+            raise AssertionError('Project description must be at least 5 characters long')
         return description
 
     def to_dict(self):
@@ -102,9 +106,11 @@ class Project(db.Model):
             'name': self.name,
             'description': self.description,
             'owner_id': self.owner_id,
+            'owner_name': self.owner.username,
             'github_link': self.github_link,
             'class_id': self.class_id,
-            'poster_url': self.poster_url  # Include poster_url in the dictionary
+            'class_name': self.class_.name,
+            'poster_url': self.poster_url
         }
 
 class ProjectMember(db.Model):
@@ -118,5 +124,7 @@ class ProjectMember(db.Model):
         return {
             'id': self.id,
             'project_id': self.project_id,
-            'user_id': self.user_id
+            'project_name': self.project.name,
+            'user_id': self.user_id,
+            'user_name': self.user.username
         }
