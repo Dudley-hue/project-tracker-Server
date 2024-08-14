@@ -1,12 +1,14 @@
 import jwt
 import datetime
 from functools import wraps
-from flask import Blueprint, request, jsonify, current_app, session
+from flask import Blueprint, request, jsonify, session
 from app import db
 from models import User, Project, Cohort, Class, ProjectMember, Role
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import CORS
 
 api_bp = Blueprint('api', __name__)
+CORS(api_bp)
 
 # Secret key for JWT encoding and decoding
 SECRET_KEY = "your_secret_key_here"  # Replace with your actual secret key
@@ -63,22 +65,20 @@ def register():
         return jsonify({'error': 'User already exists'}), 400
 
     try:
-        # Fetch the role based on role_id
         role = Role.query.get(role_id)
         
         if not role:
             return jsonify({'error': 'Role not found'}), 500
 
-        # Create the new user
         new_user = User(username=username, email=email, role_id=role.id)
-        new_user.set_password(password)  # Set the password using the method in the User model
+        new_user.set_password(password)
 
         db.session.add(new_user)
         db.session.commit()
         return jsonify({'message': 'User registered successfully'}), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to register user'}), 500
+        return jsonify({'error': 'Failed to register user', 'details': str(e)}), 500
 
 # Login Route
 @api_bp.route('/login', methods=['POST'])
@@ -158,8 +158,7 @@ def create_project(current_user):
         return jsonify(new_project.to_dict()), 201
     except Exception as e:
         db.session.rollback()
-        print(f"Error: {e}")
-        return jsonify({'error': 'Failed to create project'}), 500
+        return jsonify({'error': 'Failed to create project', 'details': str(e)}), 500
 
 # Update a Project
 @api_bp.route('/projects/<int:project_id>', methods=['PUT'])
@@ -181,9 +180,13 @@ def update_project(current_user, project_id):
 @token_required
 def delete_project(current_user, project_id):
     project = Project.query.get_or_404(project_id)
-    db.session.delete(project)
-    db.session.commit()
-    return jsonify({'message': 'Project deleted successfully'}), 200
+    try:
+        db.session.delete(project)
+        db.session.commit()
+        return jsonify({'message': 'Project deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete project', 'details': str(e)}), 500
 
 # Get All Cohorts
 @api_bp.route('/cohorts', methods=['GET'])
@@ -198,21 +201,52 @@ def get_cohorts():
         'description': cohort.description
     } for cohort in cohorts]), 200
 
-# Create New Cohort
+# Create New Cohort with Classes
 @api_bp.route('/cohorts', methods=['POST'])
 @token_required
 def create_cohort(current_user):
     data = request.get_json()
     name = data.get('name')
     description = data.get('description')
+    classes = data.get('classes', [])
 
     new_cohort = Cohort(
         name=name,
         description=description
     )
-    db.session.add(new_cohort)
-    db.session.commit()
-    return jsonify(new_cohort.to_dict()), 201
+
+    try:
+        db.session.add(new_cohort)
+        db.session.flush()  # Flush to get the cohort id before committing
+
+        # Add classes to the cohort
+        for cls in classes:
+            new_class = Class(
+                name=cls.get('name'),
+                description=cls.get('description'),
+                cohort_id=new_cohort.id
+            )
+            db.session.add(new_class)
+
+        db.session.commit()  # Commit both cohort and classes together
+        return jsonify(new_cohort.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to create cohort with classes', 'details': str(e)}), 500
+
+# Delete Cohort
+@api_bp.route('/cohorts/<int:cohort_id>', methods=['DELETE'])
+@token_required
+def delete_cohort(current_user, cohort_id):
+    cohort = Cohort.query.get_or_404(cohort_id)
+    
+    try:
+        db.session.delete(cohort)
+        db.session.commit()
+        return jsonify({'message': 'Cohort deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete cohort', 'details': str(e)}), 500
 
 # Get All Classes
 @api_bp.route('/classes', methods=['GET'])

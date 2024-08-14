@@ -1,8 +1,8 @@
-"""Added Class model
+"""Initial migration.
 
-Revision ID: 771d8bade00f
+Revision ID: ae54fe6cb0a2
 Revises: 
-Create Date: 2024-08-07 13:21:12.480055
+Create Date: 2024-08-14 11:11:57.340960
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '771d8bade00f'
+revision = 'ae54fe6cb0a2'
 down_revision = None
 branch_labels = None
 depends_on = None

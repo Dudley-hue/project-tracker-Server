@@ -1,4 +1,9 @@
-from app import db
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()  # Initialize the SQLAlchemy object
+
+# Your models go here
+
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, validates
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,7 +15,7 @@ class User(db.Model):
     email = Column(String(120), unique=True, nullable=False)
     role_id = Column(Integer, ForeignKey('role.id'), nullable=False)
     role = relationship('Role', back_populates='users')
-    projects = relationship('Project', back_populates='owner')
+    projects = relationship('Project', back_populates='owner', cascade="all, delete-orphan")
     project_memberships = relationship('ProjectMember', back_populates='user')
 
     def set_password(self, password):
@@ -43,7 +48,7 @@ class Cohort(db.Model):
     id = Column(Integer, primary_key=True)
     name = Column(String(80), nullable=False)
     description = Column(String(200))
-    classes = relationship('Class', back_populates='cohort')
+    classes = relationship('Class', back_populates='cohort', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -59,7 +64,7 @@ class Class(db.Model):
     description = Column(String(200))
     cohort_id = Column(Integer, ForeignKey('cohort.id'), nullable=False)
     cohort = relationship('Cohort', back_populates='classes')
-    projects = relationship('Project', back_populates='class_')
+    projects = relationship('Project', back_populates='class_', cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -80,7 +85,7 @@ class Project(db.Model):
     owner = relationship('User', back_populates='projects')
     class_id = Column(Integer, ForeignKey('class.id'), nullable=False)
     class_ = relationship('Class', back_populates='projects')
-    project_members = relationship('ProjectMember', back_populates='project')
+    project_members = relationship('ProjectMember', back_populates='project', cascade="all, delete-orphan")
     
     @validates('name')
     def validate_name(self, key, name):

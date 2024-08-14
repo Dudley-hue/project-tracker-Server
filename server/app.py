@@ -1,38 +1,25 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from models import db  # Import db from models
+from routes import api_bp
 from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager
-from flask_talisman import Talisman
-from flask_cors import CORS
-
-# Initialize extensions
-db = SQLAlchemy()
-migrate = Migrate()
-jwt = JWTManager()
 
 def create_app():
     app = Flask(__name__)
-    
-    # Load configuration from 'config.py'
-    app.config.from_object('config.Config')
-    
-    # Initialize extensions with the app
-    db.init_app(app)
-    migrate.init_app(app, db)
-    jwt.init_app(app)
-    
-    # Apply security headers with Talisman, disable force_https for development
-    Talisman(app, force_https=False)
-    
-    # Enable CORS for all routes
-    CORS(app)
+    app.config['SECRET_KEY'] = 'your_secret_key_here'  # Replace with your actual secret key
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Import and register the blueprint
-    from routes import api_bp
+    db.init_app(app)  # Initialize the db with the app
+    migrate = Migrate(app, db)  # Initialize Flask-Migrate
+
+    # Register the Blueprint after initializing the app and db
     app.register_blueprint(api_bp, url_prefix='/api')
+
+    with app.app_context():
+        db.create_all()  # Create database tables if they don't exist
 
     return app
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)  # Enable debug mode for development
+    app.run(debug=True)
