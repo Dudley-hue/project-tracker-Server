@@ -16,16 +16,25 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        if 'Authorization' in request.headers:
-            token = request.headers['Authorization'].split(" ")[1]  # Bearer token
+        auth_header = request.headers.get('Authorization')
 
-        if not token:
-            return jsonify({'message': 'Token is missing!'}), 401
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0] == 'Bearer':
+                token = parts[1]
+            else:
+                return jsonify({'message': 'Authorization header must be Bearer token!'}), 401
+        else:
+            return jsonify({'message': 'Authorization header is missing!'}), 401
 
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             current_user = User.query.filter_by(id=data['user_id']).first()
-        except:
+            if not current_user:
+                return jsonify({'message': 'User not found!'}), 404
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
             return jsonify({'message': 'Token is invalid!'}), 401
 
         return f(current_user, *args, **kwargs)
@@ -109,15 +118,13 @@ def logout():
 
 # Get All Projects
 @api_bp.route('/projects', methods=['GET'])
-@token_required
-def get_projects(current_user):
+def get_projects():
     projects = Project.query.all()
     return jsonify([project.to_dict() for project in projects]), 200
 
 # Get Single Project
 @api_bp.route('/projects/<int:project_id>', methods=['GET'])
-@token_required
-def get_project(current_user, project_id):
+def get_project(project_id):
     project = Project.query.get_or_404(project_id)
     return jsonify(project.to_dict()), 200
 
@@ -131,7 +138,7 @@ def create_project(current_user):
     github_link = data.get('github_link')
     owner_id = data.get('owner_id')
     class_id = data.get('class_id')
-    poster_url = data.get('poster_url', '')  # Handle optional poster_url with default empty string
+    poster_url = data.get('poster_url', '')
 
     if not name or not description or not owner_id or not class_id:
         return jsonify({'error': 'Missing required fields'}), 400
@@ -180,8 +187,7 @@ def delete_project(current_user, project_id):
 
 # Get All Cohorts
 @api_bp.route('/cohorts', methods=['GET'])
-@token_required
-def get_cohorts(current_user):
+def get_cohorts():
     cohorts = Cohort.query.all()
     if not cohorts:
         return jsonify({"message": "No cohorts found"}), 404
@@ -210,8 +216,7 @@ def create_cohort(current_user):
 
 # Get All Classes
 @api_bp.route('/classes', methods=['GET'])
-@token_required
-def get_classes(current_user):
+def get_classes():
     cohort_id = request.args.get('cohort_id')
     if cohort_id:
         classes = Class.query.filter_by(cohort_id=cohort_id).all()
@@ -266,85 +271,21 @@ def create_project_member(current_user):
 @token_required
 def get_users(current_user):
     users = User.query.all()
-    return jsonify([user.to_dict() for user in users]), 200
+    return jsonify([{
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'role': user.role.name
+    } for user in users]), 200
 
-# Delete a User
-@api_bp.route('/users/<int:user_id>', methods=['DELETE'])
+# Get Single User
+@api_bp.route('/users/<int:user_id>', methods=['GET'])
 @token_required
-def delete_user(current_user, user_id):
+def get_user(current_user, user_id):
     user = User.query.get_or_404(user_id)
-
-    # Reassign user's projects to another user before deleting the user
-    admin_user = User.query.filter_by(email='adminuser1@example.com').first()
-    if not admin_user:
-        return jsonify({'message': 'Admin user not found for reassignment'}), 404
-
-    for project in user.projects:
-        project.owner_id = admin_user.id
-
-    db.session.commit()
-
-    # Delete user's project memberships
-    ProjectMember.query.filter_by(user_id=user_id).delete()
-
-    db.session.delete(user)
-    db.session.commit()
-    return jsonify({'message': 'User deleted successfully'}), 200
-
-# Create New Cohort with Classes
-@api_bp.route('/cohorts_with_classes', methods=['POST'])
-@token_required
-def create_cohort_with_classes(current_user):
-    data = request.get_json()
-    name = data.get('name')
-    description = data.get('description')
-    classes = data.get('classes', [])
-
-    new_cohort = Cohort(
-        name=name,
-        description=description
-    )
-    
-    try:
-        db.session.add(new_cohort)
-        db.session.flush()  # To get cohort_id for class association
-        
-        for cls in classes:
-            new_class = Class(
-                name=cls['name'],
-                description=cls['description'],
-                cohort_id=new_cohort.id
-            )
-            db.session.add(new_class)
-
-        db.session.commit()
-        return jsonify(new_cohort.to_dict()), 201
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error: {e}")
-        return jsonify({'error': 'Failed to create cohort with classes'}), 500
-
-# Delete a Cohort and Everything in It
-@api_bp.route('/cohorts/<int:cohort_id>', methods=['DELETE'])
-@token_required
-def delete_cohort(current_user, cohort_id):
-    cohort = Cohort.query.get_or_404(cohort_id)
-    
-    try:
-        # Delete all projects associated with the classes in the cohort
-        classes = Class.query.filter_by(cohort_id=cohort_id).all()
-        for cls in classes:
-            projects = Project.query.filter_by(class_id=cls.id).all()
-            for project in projects:
-                db.session.delete(project)
-        
-        # Delete all classes in the cohort
-        Class.query.filter_by(cohort_id=cohort_id).delete()
-
-        # Finally, delete the cohort itself
-        db.session.delete(cohort)
-        db.session.commit()
-        return jsonify({'message': 'Cohort and all associated classes and projects deleted successfully'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to delete cohort'}), 500
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'role': user.role.name
+    }), 200
