@@ -191,6 +191,7 @@ def delete_project(current_user, project_id):
 # Get All Cohorts
 @api_bp.route('/cohorts', methods=['GET'])
 def get_cohorts():
+    print("Cohorts endpoint hit")  # Debug statement
     cohorts = Cohort.query.all()
     if not cohorts:
         return jsonify({"message": "No cohorts found"}), 404
@@ -198,7 +199,8 @@ def get_cohorts():
     return jsonify([{
         'id': cohort.id,
         'name': cohort.name,
-        'description': cohort.description
+        'description': cohort.description,
+        'poster_url': cohort.poster_url
     } for cohort in cohorts]), 200
 
 # Create New Cohort with Classes
@@ -241,12 +243,20 @@ def delete_cohort(current_user, cohort_id):
     cohort = Cohort.query.get_or_404(cohort_id)
     
     try:
+        # Manually delete all classes and their projects before deleting the cohort
+        for cls in cohort.classes:
+            for project in cls.projects:
+                db.session.delete(project)
+            db.session.delete(cls)
+        
         db.session.delete(cohort)
         db.session.commit()
-        return jsonify({'message': 'Cohort deleted successfully'}), 200
+        return jsonify({'message': 'Cohort and its associated classes and projects deleted successfully'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to delete cohort', 'details': str(e)}), 500
+
+
 
 # Get All Classes
 @api_bp.route('/classes', methods=['GET'])

@@ -1,7 +1,9 @@
 from flask import Flask
-from models import db  # Import db from models
-from routes import api_bp
+from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+
+# Initialize db here
+db = SQLAlchemy()
 
 def create_app():
     app = Flask(__name__)
@@ -12,7 +14,8 @@ def create_app():
     db.init_app(app)  # Initialize the db with the app
     migrate = Migrate(app, db)  # Initialize Flask-Migrate
 
-    # Register the Blueprint after initializing the app and db
+    from models import User, Role, Project, Cohort, Class, ProjectMember  # Import models after db is initialized
+    from routes import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
 
     with app.app_context():
