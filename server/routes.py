@@ -121,6 +121,68 @@ def logout():
 def get_projects():
     projects = Project.query.all()
     return jsonify([project.to_dict() for project in projects]), 200
+#Get Projects By Class
+@api_bp.route('/classes/<int:class_id>/projects', methods=['GET'])
+def get_projects_by_class(class_id):
+    projects = Project.query.filter_by(class_id=class_id).all()
+    return jsonify([project.to_dict() for project in projects]), 200
+#post a project by class
+
+@api_bp.route('/classes/<int:class_id>/projects', methods=['POST'])
+def add_project(class_id):
+    data = request.json
+    try:
+        # Extract data from request
+        name = data.get('name')
+        description = data.get('description')
+        github_link = data.get('github_link')
+        poster_url = data.get('poster_url')
+        owner_id = data.get('owner_id')  # Ensure owner_id is extracted
+
+        # Validate required fields
+        if not name or not description or not github_link or not poster_url or not owner_id:
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Create a new project instance
+        new_project = Project(
+            name=name,
+            description=description,
+            github_link=github_link,
+            poster_url=poster_url,
+            class_id=class_id,
+            owner_id=owner_id  # Associate the owner of the project
+        )
+        
+        # Add the new project to the database
+        db.session.add(new_project)
+        db.session.commit()
+
+        # Return the new project data as a response
+        return jsonify(new_project.to_dict()), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+        # Create a new project instance
+        new_project = Project(
+            name=name,
+            description=description,
+            github_link=github_link,
+            poster_url=poster_url,
+            class_id=class_id  # Associate the project with the specific class
+        )
+        
+        # Add the new project to the database
+        db.session.add(new_project)
+        db.session.commit()
+
+        # Return the new project data as a response
+        return jsonify(new_project.to_dict()), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # Get Single Project
 @api_bp.route('/projects/<int:project_id>', methods=['GET'])
@@ -321,6 +383,8 @@ def get_users(current_user):
         'email': user.email,
         'role': user.role.name
     } for user in users]), 200
+
+
 
 # Get Single User
 @api_bp.route('/users/<int:user_id>', methods=['GET'])
