@@ -121,13 +121,14 @@ def logout():
 def get_projects():
     projects = Project.query.all()
     return jsonify([project.to_dict() for project in projects]), 200
-#Get Projects By Class
+
+# Get Projects By Class
 @api_bp.route('/classes/<int:class_id>/projects', methods=['GET'])
 def get_projects_by_class(class_id):
     projects = Project.query.filter_by(class_id=class_id).all()
     return jsonify([project.to_dict() for project in projects]), 200
-#post a project by class
 
+# Post a Project by Class
 @api_bp.route('/classes/<int:class_id>/projects', methods=['POST'])
 def add_project(class_id):
     data = request.json
@@ -151,26 +152,6 @@ def add_project(class_id):
             poster_url=poster_url,
             class_id=class_id,
             owner_id=owner_id  # Associate the owner of the project
-        )
-        
-        # Add the new project to the database
-        db.session.add(new_project)
-        db.session.commit()
-
-        # Return the new project data as a response
-        return jsonify(new_project.to_dict()), 201
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-        # Create a new project instance
-        new_project = Project(
-            name=name,
-            description=description,
-            github_link=github_link,
-            poster_url=poster_url,
-            class_id=class_id  # Associate the project with the specific class
         )
         
         # Add the new project to the database
@@ -298,6 +279,44 @@ def create_cohort(current_user):
         db.session.rollback()
         return jsonify({'error': 'Failed to create cohort with classes', 'details': str(e)}), 500
 
+# Update Cohort
+@api_bp.route('/cohorts/<int:cohort_id>', methods=['PUT'])
+@token_required
+def update_cohort(current_user, cohort_id):
+    cohort = Cohort.query.get_or_404(cohort_id)
+    data = request.get_json()
+
+    # Update cohort details
+    cohort.name = data.get('name', cohort.name)
+    cohort.description = data.get('description', cohort.description)
+
+    # Check if there are classes to update or add
+    classes = data.get('classes', [])
+    existing_class_ids = [cls.id for cls in cohort.classes]
+
+    for cls_data in classes:
+        class_id = cls_data.get('id')
+        if class_id and class_id in existing_class_ids:
+            # Update existing class
+            cls = Class.query.get(class_id)
+            cls.name = cls_data.get('name', cls.name)
+            cls.description = cls_data.get('description', cls.description)
+        else:
+            # Add new class
+            new_class = Class(
+                name=cls_data.get('name'),
+                description=cls_data.get('description'),
+                cohort_id=cohort_id
+            )
+            db.session.add(new_class)
+
+    try:
+        db.session.commit()
+        return jsonify(cohort.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update cohort', 'details': str(e)}), 500
+
 # Delete Cohort
 @api_bp.route('/cohorts/<int:cohort_id>', methods=['DELETE'])
 @token_required
@@ -317,8 +336,6 @@ def delete_cohort(current_user, cohort_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to delete cohort', 'details': str(e)}), 500
-
-
 
 # Get All Classes
 @api_bp.route('/classes', methods=['GET'])
@@ -383,8 +400,6 @@ def get_users(current_user):
         'email': user.email,
         'role': user.role.name
     } for user in users]), 200
-
-
 
 # Get Single User
 @api_bp.route('/users/<int:user_id>', methods=['GET'])
