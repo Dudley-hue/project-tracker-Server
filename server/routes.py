@@ -214,6 +214,9 @@ def update_project(current_user, project_id):
     project.description = data.get('description', project.description)
     project.github_link = data.get('github_link', project.github_link)
     project.poster_url = data.get('poster_url', project.poster_url)
+    project.class_id = data.get('class_id', project.class_id)  # Update class_id if provided
+    project.owner_id = data.get('owner_id', project.owner_id)  # Update owner_id if provided
+
 
     db.session.commit()
     return jsonify(project.to_dict()), 200
