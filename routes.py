@@ -121,6 +121,19 @@ def logout():
 def get_projects():
     projects = Project.query.all()
     return jsonify([project.to_dict() for project in projects]), 200
+# Delete a User
+@api_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@token_required
+def delete_user(current_user, user_id):
+    user = User.query.get_or_404(user_id)
+    
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'message': 'User deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete user', 'details': str(e)}), 500
 
 # Get Projects By Class
 @api_bp.route('/classes/<int:class_id>/projects', methods=['GET'])
